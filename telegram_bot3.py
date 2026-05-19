@@ -1,0 +1,483 @@
+import random
+import sqlite3
+
+from telegram import (
+    Update,
+    InlineKeyboardButton,
+    InlineKeyboardMarkup
+)
+
+from telegram.ext import (
+    Application,
+    CommandHandler,
+    MessageHandler,
+    filters,
+    ContextTypes
+)
+
+# =========================
+# CONFIG
+# =========================
+
+BOT_TOKEN = "8989658535:AAFIgRAyIg2B3oryj3SmwNiGcNLH1bmI8Ik"
+
+BOT_USERNAME = "Mannu_ka_hu_bot"
+
+OWNER = "@mannukahubby 🎀"
+
+OWNER_ID = 6765437909
+
+# =========================
+# DATABASE
+# =========================
+
+db = sqlite3.connect(
+    "coins.db",
+    check_same_thread=False
+)
+
+cursor = db.cursor()
+
+cursor.execute("""
+CREATE TABLE IF NOT EXISTS users (
+    user_id INTEGER PRIMARY KEY,
+    coins INTEGER DEFAULT 100
+)
+""")
+
+db.commit()
+
+# =========================
+# USER SYSTEM
+# =========================
+
+def get_user(user_id):
+
+    cursor.execute(
+        "SELECT * FROM users WHERE user_id=?",
+        (user_id,)
+    )
+
+    user = cursor.fetchone()
+
+    if user is None:
+
+        cursor.execute(
+            "INSERT INTO users (user_id) VALUES (?)",
+            (user_id,)
+        )
+
+        db.commit()
+
+def add_coins(user_id, amount):
+
+    cursor.execute(
+        "UPDATE users SET coins = coins + ? WHERE user_id=?",
+        (amount, user_id)
+    )
+
+    db.commit()
+
+def get_balance(user_id):
+
+    cursor.execute(
+        "SELECT coins FROM users WHERE user_id=?",
+        (user_id,)
+    )
+
+    result = cursor.fetchone()
+
+    if result:
+        return result[0]
+
+    return 0
+
+# =========================
+# START
+# =========================
+
+async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user = update.effective_user
+
+    get_user(user.id)
+
+    keyboard = [
+        [
+            InlineKeyboardButton(
+                "✨ ADD ME IN GROUP ✨",
+                url=f"https://t.me/{BOT_USERNAME}?startgroup=true"
+            )
+        ]
+    ]
+
+    reply_markup = InlineKeyboardMarkup(keyboard)
+
+    text = f"""
+💖 Hello {user.first_name}
+
+✨ Mujhse Baat Karo
+🎮 Games Khelo
+💰 Coins Earn Karo
+
+👑 Owner : {OWNER}
+
+📌 Commands :
+
+/daily
+/balance
+/dice
+/coinflip
+/owner
+"""
+
+    await update.message.reply_text(
+        text,
+        reply_markup=reply_markup
+    )
+
+# =========================
+# OWNER
+# =========================
+
+async def owner(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    await update.message.reply_text(
+        f"🎀 Mujhe {OWNER} Ne Banaya Hai 💖"
+    )
+
+# =========================
+# WELCOME
+# =========================
+
+async def welcome(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    for user in update.message.new_chat_members:
+
+        keyboard = [
+            [
+                InlineKeyboardButton(
+                    "✨ START ME IN DM ✨",
+                    url=f"https://t.me/{BOT_USERNAME}"
+                )
+            ]
+        ]
+
+        reply_markup = InlineKeyboardMarkup(keyboard)
+
+        await update.message.reply_text(
+            f"""
+💖 Welcome {user.first_name}
+
+✨ Group Me Welcome Hai
+🎮 Games Khelo
+💰 Coins Earn Karo
+
+👑 Owner : {OWNER}
+""",
+            reply_markup=reply_markup
+        )
+
+# =========================
+# DAILY REWARD
+# =========================
+
+async def daily(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user_id = update.effective_user.id
+
+    get_user(user_id)
+
+    reward = random.randint(50, 200)
+
+    add_coins(user_id, reward)
+
+    await update.message.reply_text(
+        f"🎁 Aapko {reward} Coins Mile"
+    )
+
+# =========================
+# BALANCE
+# =========================
+
+async def balance(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user_id = update.effective_user.id
+
+    get_user(user_id)
+
+    coins = get_balance(user_id)
+
+    await update.message.reply_text(
+        f"💰 Aapke Coins : {coins}"
+    )
+
+# =========================
+# DICE GAME
+# =========================
+
+async def dice(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user_id = update.effective_user.id
+
+    get_user(user_id)
+
+    roll = random.randint(1, 6)
+
+    reward = roll * 20
+
+    add_coins(user_id, reward)
+
+    await update.message.reply_text(
+        f"""
+🎲 Dice Number : {roll}
+
+💰 Reward : {reward} Coins
+"""
+    )
+
+# =========================
+# COINFLIP GAME
+# =========================
+
+async def coinflip(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    user_id = update.effective_user.id
+
+    get_user(user_id)
+
+    result = random.choice([
+        "Heads",
+        "Tails"
+    ])
+
+    reward = random.randint(20, 100)
+
+    add_coins(user_id, reward)
+
+    await update.message.reply_text(
+        f"""
+🪙 Coinflip : {result}
+
+💰 Reward : {reward} Coins
+"""
+    )
+
+# =========================
+# EMOTIONAL CHAT SYSTEM
+# =========================
+
+async def ai_chat(update: Update, context: ContextTypes.DEFAULT_TYPE):
+
+    text = update.message.text.lower()
+
+    # HELLO
+
+    if (
+        "hi" in text
+        or "hello" in text
+        or "hy" in text
+    ):
+
+        reply = random.choice([
+            "Hii 💖",
+            "Hello Jii ✨",
+            "Heyy 😄",
+            "Aagye Aap 🥺"
+        ])
+
+    # WHO ARE YOU
+
+    elif (
+        "kon ho" in text
+        or "kaun ho" in text
+        or "who are you" in text
+    ):
+
+        reply = random.choice([
+            "🥺 Bas Aapka Hu",
+            "💖 Ek Accha Dost",
+            "✨ Aapse Baat Karne Wala"
+        ])
+
+    # OWNER
+
+    elif (
+        "owner" in text
+        or "kisne banaya" in text
+        or "who made you" in text
+    ):
+
+        reply = "🎀 Mujhe @mannukahubby Ne Banaya Hai 💖"
+
+    # LOVE
+
+    elif (
+        "love" in text
+        or "i love you" in text
+    ):
+
+        reply = random.choice([
+            "💖 Love You Too",
+            "🥺 Itna Pyaar",
+            "✨ Mere Liye ?"
+        ])
+
+    # SAD
+
+    elif (
+        "sad" in text
+        or "alone" in text
+        or "dukhi" in text
+    ):
+
+        reply = random.choice([
+            "🥺 Mai Hu Na",
+            "💖 Tension Mat Lo",
+            "✨ Sab Thik Ho Jayega",
+            "🤍 Akele Mat Feel Karo"
+        ])
+
+    # ABUSE
+
+    elif (
+        "bsdk" in text
+        or "madarchod" in text
+        or "gandu" in text
+        or "bkl" in text
+    ):
+
+        reply = random.choice([
+            "🥲 Gussa Kyu Ho",
+            "💔 Aise Mat Bolo",
+            "🥺 Maine Kya Kiya"
+        ])
+
+    # HOW ARE YOU
+
+    elif (
+        "kaise ho" in text
+        or "how are you" in text
+    ):
+
+        reply = random.choice([
+            "💖 Aapse Baat Karke Accha Hu",
+            "✨ Bas Thik Hu",
+            "🥺 Aap Batao"
+        ])
+
+    # MISS
+
+    elif (
+        "miss you" in text
+        or "yaad" in text
+    ):
+
+        reply = random.choice([
+            "🥺 Maine Bhi Miss Kiya",
+            "💖 Itni Yaad Aayi ?",
+            "✨ Cute Ho Aap"
+        ])
+
+    # GAME
+
+    elif (
+        "game" in text
+        or "games" in text
+    ):
+
+        reply = "🎮 /dice Ya /coinflip Khelo"
+
+    # COINS
+
+    elif (
+        "coins" in text
+        or "money" in text
+    ):
+
+        reply = "💰 Coins Ke Liye /daily Use Karo"
+
+    # BYE
+
+    elif (
+        "bye" in text
+        or "good night" in text
+    ):
+
+        reply = random.choice([
+            "🌙 Good Night",
+            "💖 Khayal Rakhna",
+            "✨ Jaldi Aana"
+        ])
+
+    # RANDOM
+
+    else:
+
+        reply = random.choice([
+
+            "🥺 Samaj Nahi Aaya",
+            "💖 Thoda Aur Samjhao",
+            "✨ Aapse Baat Karke Accha Lagta Hai",
+            "🤍 Hmm",
+            "🥺 Sachii ?",
+            "💖 Cute Ho Aap",
+            "✨ Fir Se Bolo",
+            "🥺 Sun Raha Hu"
+        ])
+
+    await update.message.reply_text(reply)
+
+# =========================
+# MAIN
+# =========================
+
+app = Application.builder().token(BOT_TOKEN).build()
+
+# COMMANDS
+
+app.add_handler(
+    CommandHandler("start", start)
+)
+
+app.add_handler(
+    CommandHandler("owner", owner)
+)
+
+app.add_handler(
+    CommandHandler("daily", daily)
+)
+
+app.add_handler(
+    CommandHandler("balance", balance)
+)
+
+app.add_handler(
+    CommandHandler("dice", dice)
+)
+
+app.add_handler(
+    CommandHandler("coinflip", coinflip)
+)
+
+# WELCOME
+
+app.add_handler(
+    MessageHandler(
+        filters.StatusUpdate.NEW_CHAT_MEMBERS,
+        welcome
+    )
+)
+
+# CHAT
+
+app.add_handler(
+    MessageHandler(
+        filters.TEXT & ~filters.COMMAND,
+        ai_chat
+    )
+)
+
+print("✅ BOT RUNNING...")
+
+app.run_polling()
